@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tzLib;
@@ -13,6 +14,9 @@ import 'services/notification_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   debugPrint('🚀 [Main] Iniciando PillCare App...');
+
+  // ── Cargar variables de entorno ──
+  await dotenv.load(fileName: '.env');
 
   // ── Inicializar timezone ──
   tz.initializeTimeZones();
