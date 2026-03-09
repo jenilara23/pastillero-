@@ -1,0 +1,10 @@
+# Archivos de Windows y sistema
+ntuser.dat*
+ntuser.ini
+Documents/
+Pictures/
+Videos/
+# Archivos de Flutter/Dart
+.dart_tool/
+build/
+.vscode/
