@@ -2,14 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../models/alarm.dart';
+import '../models/app_theme.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
 
   // ── Canal Android de alta prioridad ──────────────────────────────────────
   static const _channel = AndroidNotificationChannel(
-    'pillcare_alarms_v3',
-    'Alarmas Críticas PillCare',
+    kNotifChannelId,
+    kNotifChannelName,
     description: 'Alertas de alta prioridad para medicamentos',
     importance: Importance.max,
     playSound: true,

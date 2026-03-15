@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen>
                 colors: [
                   AppColors.navy,
                   AppColors.navyLight,
-                  Color(0xFF3A6BA5)
+                  AppColors.blueGradientEnd
                 ],
               ),
             ),
@@ -195,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen>
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF4A9EDE), Color(0xFF2D5282)],
+                colors: [AppColors.blue, AppColors.navyLight],
               ),
               boxShadow: [
                 BoxShadow(
@@ -425,14 +425,14 @@ class _LoginScreenState extends State<LoginScreen>
           prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
           suffixIcon: suffix,
           filled: true,
-          fillColor: const Color(0xFFF8FAFC),
+          fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 2),
+            borderSide: const BorderSide(color: AppColors.inputBorder, width: 2),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 2),
+            borderSide: const BorderSide(color: AppColors.inputBorder, width: 2),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),

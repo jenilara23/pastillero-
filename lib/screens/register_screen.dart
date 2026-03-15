@@ -123,7 +123,7 @@ class _RegisterScreenState extends State<RegisterScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.navy, AppColors.navyLight, Color(0xFF3A6BA5)],
+            colors: [AppColors.navy, AppColors.navyLight, AppColors.blueGradientEnd],
           ),
         ),
         child: SafeArea(
@@ -354,14 +354,14 @@ class _RegisterScreenState extends State<RegisterScreen>
           prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
           suffixIcon: suffix,
           filled: true,
-          fillColor: const Color(0xFFF8FAFC),
+          fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 2),
+            borderSide: const BorderSide(color: AppColors.inputBorder, width: 2),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 2),
+            borderSide: const BorderSide(color: AppColors.inputBorder, width: 2),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),

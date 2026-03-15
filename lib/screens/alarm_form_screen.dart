@@ -164,21 +164,21 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
   // ─────────────────────────────────────── HEADER ──
   Widget _buildHeader() {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [AppColors.navy, AppColors.navyLight],
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(28),
           bottomRight: Radius.circular(28),
         ),
         boxShadow: [
           BoxShadow(
-            color: Color(0x331E3A5F),
+            color: AppColors.navy.withValues(alpha: 0.2),
             blurRadius: 18,
-            offset: Offset(0, 6),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -276,14 +276,14 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
           hintStyle: const TextStyle(color: AppColors.textMuted),
           prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
           filled: true,
-          fillColor: const Color(0xFFF8FAFC),
+          fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+            borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+            borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -424,7 +424,7 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
             height: 44,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [AppColors.mintBg, Color(0xFFD4F0ED)],
+                colors: [AppColors.mintBg, AppColors.mintDark],
               ),
               shape: BoxShape.circle,
             ),
@@ -450,7 +450,7 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
             height: 44,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [AppColors.mintBg, Color(0xFFD4F0ED)],
+                colors: [AppColors.mintBg, AppColors.mintDark],
               ),
               shape: BoxShape.circle,
             ),
@@ -562,7 +562,7 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFFEDF7FF), Color(0xFFD6EEFF)],
+                      colors: [AppColors.blueVeryLight, AppColors.blueLightBg],
                     ),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.blue, width: 1.5),
@@ -649,7 +649,6 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
   Widget _buildDaysSelector() => Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(7, (i) {
-          const names = ['L', 'M', 'Mi', 'J', 'V', 'S', 'D'];
           return GestureDetector(
             onTap: () => setState(() => _days[i] = !_days[i]),
             child: AnimatedContainer(
@@ -665,9 +664,9 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
                         end: Alignment.bottomRight,
                       )
                     : null,
-                color: _days[i] ? null : const Color(0xFFF0F4F8),
+                color: _days[i] ? null : AppColors.bgColor,
                 border: Border.all(
-                  color: _days[i] ? AppColors.navy : const Color(0xFFE2E8F0),
+                  color: _days[i] ? AppColors.navy : AppColors.inputBorder,
                   width: 2,
                 ),
                 boxShadow: _days[i]
@@ -682,7 +681,7 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
               ),
               child: Center(
                 child: Text(
-                  names[i],
+                  dayNames[i],
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,

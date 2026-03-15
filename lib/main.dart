@@ -20,7 +20,7 @@ Future<void> main() async {
 
   // ── Inicializar timezone ──
   tz.initializeTimeZones();
-  tzLib.setLocalLocation(tzLib.getLocation('America/Mexico_City'));
+  tzLib.setLocalLocation(tzLib.getLocation(kTimezone));
 
   // ── Inicializar Notificaciones ──
   await NotificationService.init();

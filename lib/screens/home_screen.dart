@@ -6,6 +6,8 @@ import '../models/alarm_storage.dart';
 import '../services/supabase_service.dart';
 import '../services/notification_service.dart';
 import 'alarm_form_screen.dart';
+import 'connectivity_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,8 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Alarm> _alarms = [];
   DateTime _selectedDate = DateTime.now();
   bool _loading = true;
-  bool _pastilleroConectado = false;
-  bool _conectando = false;
+  ConnectionType _connectionType = ConnectionType.none;
 
   String get _userName {
     final user = supabase.auth.currentUser;
@@ -104,6 +105,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int get _activeCount => _alarms.where((a) => a.enabled).length;
 
+  /// Alarmas que aplican para el día seleccionado en el calendario.
+  /// Una alarma aplica si:
+  ///   - Tiene el día específico activado, O
+  ///   - No tiene ningún día activado (modo manual/diario)
+  List<Alarm> get _alarmsForSelectedDay {
+    final weekdayIdx = _selectedDate.weekday - 1; // Lun=0 … Dom=6
+    return _alarms.where((a) {
+      final hasDays = a.days.any((d) => d);
+      if (!hasDays) return true; // alarma diaria → siempre visible
+      return a.days[weekdayIdx];
+    }).toList();
+  }
+
+  Future<void> _openConnectivity() async {
+    final result = await Navigator.push<ConnectionType>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConnectivityScreen(initialType: _connectionType),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() => _connectionType = result);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -123,52 +149,113 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDrawer() {
+    final user = supabase.auth.currentUser;
+    final metadata = user?.userMetadata;
+    final name = (metadata != null && metadata.containsKey('nombre'))
+        ? metadata['nombre'] as String
+        : 'Usuario';
+    final letter = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+
     return Drawer(
       backgroundColor: AppColors.navy,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(color: AppColors.navyLight),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                CircleAvatar(
-                  backgroundColor: AppColors.blue,
-                  child: Text(_avatarLetter, style: const TextStyle(color: Colors.white)),
-                ),
-                const SizedBox(height: 10),
-                Text(_userName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              ],
+      child: SafeArea(
+        child: Column(
+          children: [
+            // ── Avatar + nombre ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 36,
+                    backgroundColor: AppColors.blue,
+                    child: Text(
+                      letter,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.bluetooth_rounded, color: Colors.white),
-            title: const Text('Pastillero', style: TextStyle(color: Colors.white)),
-            subtitle: Text(_pastilleroConectado ? 'Conectado' : 'Desconectado', style: const TextStyle(color: Colors.white70)),
-            onTap: () {
-              Navigator.pop(context);
-              _conectarPastillero();
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings_outlined, color: Colors.white),
-            title: const Text('Configuración', style: TextStyle(color: Colors.white)),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.white),
-            title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.white)),
-            onTap: () async {
-              await supabase.auth.signOut();
-              if (mounted) Navigator.pushReplacementNamed(context, '/login');
-            },
-          ),
-        ],
+            const Divider(color: Colors.white12, height: 1),
+            const SizedBox(height: 8),
+            // ── Opciones ──
+            _drawerItem(
+              icon: Icons.medication_outlined,
+              title: 'Pastillero',
+              subtitle: 'Gestionar medicamentos',
+              onTap: () => Navigator.pop(context),
+            ),
+            _drawerItem(
+              icon: Icons.wifi_tethering_rounded,
+              title: 'Conectividad',
+              subtitle: 'Bluetooth y WiFi',
+              onTap: () {
+                Navigator.pop(context);
+                _openConnectivity();
+              },
+            ),
+            _drawerItem(
+              icon: Icons.settings_outlined,
+              title: 'Configuración',
+              subtitle: 'Ajustes de la app',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
+            ),
+            const Spacer(),
+            const Divider(color: Colors.white12, height: 1),
+            // ── Cerrar Sesión ──
+            ListTile(
+              leading: const Icon(Icons.logout_rounded,
+                  color: AppColors.red, size: 22),
+              title: const Text('Cerrar Sesión',
+                  style: TextStyle(
+                      color: AppColors.red, fontWeight: FontWeight.w700)),
+              onTap: () async {
+                await supabase.auth.signOut();
+                if (mounted) {
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _drawerItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      leading: Icon(icon, color: AppColors.blueLight, size: 22),
+      title: Text(title,
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+      subtitle: Text(subtitle,
+          style: const TextStyle(color: Colors.white54, fontSize: 12)),
+      onTap: onTap,
     );
   }
 
@@ -186,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.blue.withOpacity(0.6),
+                    color: AppColors.blue.withValues(alpha: 0.6),
                   ),
                   child: Center(
                     child: Text(
@@ -199,28 +286,61 @@ class _HomeScreenState extends State<HomeScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Bienvenido de vuelta', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.7))),
+                    Text('Bienvenido de vuelta', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.7))),
                     Text('$_userName 👋', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
                   ],
                 ),
                 const Spacer(),
+                // ── Icono dinámico de conexión ──
+                GestureDetector(
+                  onTap: _openConnectivity,
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: _connectionType != ConnectionType.none
+                          ? AppColors.green.withValues(alpha: 0.25)
+                          : Colors.white.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _connectionType == ConnectionType.bluetooth
+                          ? Icons.bluetooth_connected_rounded
+                          : _connectionType == ConnectionType.wifi
+                              ? Icons.wifi_rounded
+                              : Icons.wifi_off_rounded,
+                      size: 20,
+                      color: _connectionType != ConnectionType.none
+                          ? AppColors.green
+                          : Colors.white54,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Stack(
                   children: [
-                    _headerIconBtn(Icons.notifications_outlined, onTap: _mostrarNotificacionPrueba),
+                    _headerIconBtn(Icons.notifications_outlined,
+                        onTap: _mostrarNotificacionPrueba),
                     Positioned(
                       right: 0,
                       top: 0,
                       child: Container(
                         padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                        child: const Text('2', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                        decoration: const BoxDecoration(
+                            color: Colors.red, shape: BoxShape.circle),
+                        child: const Text('2',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(width: 8),
                 Builder(
-                  builder: (context) => _headerIconBtn(Icons.menu, onTap: () => Scaffold.of(context).openDrawer()),
+                  builder: (context) => _headerIconBtn(Icons.menu,
+                      onTap: () => Scaffold.of(context).openDrawer()),
                 ),
               ],
             ),
@@ -241,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.12),
+          color: Colors.white.withValues(alpha: 0.12),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, size: 20, color: Colors.white),
@@ -252,27 +372,47 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildStatsStrip() {
     return Row(
       children: [
-        _statChip('9 activas'),
-        const SizedBox(width: 10),
-        _statChip('9 medic...'),
-        const SizedBox(width: 10),
-        _statChip('Hoy'),
+        _statChip(Icons.alarm_on_rounded, '$_activeCount', 'activas'),
+        const SizedBox(width: 8),
+        _statChip(Icons.medication_outlined, '${_alarms.length}', 'medicamentos'),
+        const SizedBox(width: 8),
+        _statChip(Icons.calendar_today_rounded, '${_alarmsForSelectedDay.length}', 'hoy'),
       ],
     );
   }
 
-  Widget _statChip(String label) => Expanded(
+  Widget _statChip(IconData icon, String value, String label) => Expanded(
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Center(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white70, size: 16),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+              ),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white60,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -285,7 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -336,6 +476,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBody() {
+    final alarmsDay = _alarmsForSelectedDay;
+    final today = DateTime.now();
+    final isToday = _selectedDate.day == today.day &&
+        _selectedDate.month == today.month &&
+        _selectedDate.year == today.year;
+
+    // Nombre del día
+    const longNames = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    final dayLabel = isToday
+        ? 'Hoy'
+        : longNames[_selectedDate.weekday - 1];
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       children: [
@@ -343,26 +495,44 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 25),
         Row(
           children: [
-            const Text('Hoy', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(dayLabel,
+                style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text('${_alarms.length} alarmas', style: const TextStyle(color: Colors.white, fontSize: 12)),
+              child: Text('${alarmsDay.length} alarmas',
+                  style:
+                      const TextStyle(color: Colors.white, fontSize: 12)),
             ),
           ],
         ),
         const SizedBox(height: 15),
-        if (_alarms.isEmpty)
-           const Padding(
-             padding: EdgeInsets.only(top: 20),
-             child: Center(child: Text('No hay alarmas para hoy', style: TextStyle(color: Colors.white54))),
-           )
+        if (alarmsDay.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 30),
+            child: Column(
+              children: [
+                Icon(Icons.event_available_outlined,
+                    color: Colors.white24, size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  'Sin alarmas para $dayLabel',
+                  style: const TextStyle(
+                      color: Colors.white54, fontSize: 14),
+                ),
+              ],
+            ),
+          )
         else
-          ..._alarms.map((alarm) => _buildAlarmCard(alarm)),
+          ...alarmsDay.map((alarm) => _buildAlarmCard(alarm)),
         const SizedBox(height: 100),
       ],
     );
@@ -374,7 +544,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.mint.withOpacity(0.8),
+          color: AppColors.mint.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(25),
         ),
         child: Row(
@@ -382,7 +552,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(15),
               ),
               child: const Icon(Icons.add, color: Colors.white, size: 30),
@@ -449,7 +619,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         margin: const EdgeInsets.only(top: 5),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(color: AppColors.mint.withOpacity(0.3), borderRadius: BorderRadius.circular(10)),
+                        decoration: BoxDecoration(color: AppColors.mint.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)),
                         child: Text('Cada ${alarm.intervalHours}h', style: const TextStyle(fontSize: 10, color: AppColors.navy, fontWeight: FontWeight.bold)),
                       ),
                   ],
@@ -473,15 +643,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
-
-  void _conectarPastillero() async {
-    setState(() => _conectando = true);
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() {
-      _conectando = false;
-      _pastilleroConectado = !_pastilleroConectado;
-    });
   }
 
   Future<void> _mostrarNotificacionPrueba() async {
