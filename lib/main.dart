@@ -4,12 +4,15 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tzLib;
-import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/register_screen.dart';
-import 'models/app_theme.dart';
-import 'services/supabase_service.dart';
-import 'services/notification_service.dart';
+import 'features/auth/screens/login_screen.dart';
+import 'features/home/screens/home_screen.dart';
+import 'features/perfil/screens/profile_screen.dart';
+import 'features/avatar/avatar_page.dart';
+import 'features/auth/screens/register_screen.dart';
+import 'core/theme/app_theme.dart';
+import 'core/config/supabase_service.dart';
+import 'features/alarm/services/notification_service.dart';
+import 'features/perfil/services/perfil_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +34,10 @@ Future<void> main() async {
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   );
+
+  if (isLoggedIn) {
+    await PerfilStore.instance.loadCurrentPerfil();
+  }
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -70,6 +77,8 @@ class PillCareApp extends StatelessWidget {
       routes: {
         '/login': (_) => const LoginScreen(),
         '/home': (_) => const HomeScreen(),
+        '/profile': (_) => const ProfileScreen(),
+        '/avatar': (_) => const AvatarPage(),
         '/register': (_) => const RegisterScreen(),
       },
     );

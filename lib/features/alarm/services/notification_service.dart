@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../models/alarm.dart';
-import '../models/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
@@ -145,7 +145,7 @@ class NotificationService {
     );
   }
 
-  // ── Notificación inmediata (prueba) ──────────────────────────────────────
+  // ── Notificación inmediata (manual) ──────────────────────────────────────
   static Future<void> showNow({
     required int id,
     required String title,
@@ -165,7 +165,7 @@ class NotificationService {
           fullScreenIntent: true,
           category: AndroidNotificationCategory.alarm,
           visibility: NotificationVisibility.public,
-          ticker: 'Prueba de Alarma',
+          ticker: 'Alarma de medicamento',
           icon: '@mipmap/ic_launcher',
         ),
       ),

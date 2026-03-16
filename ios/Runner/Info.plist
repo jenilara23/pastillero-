@@ -26,6 +26,12 @@
 	<true/>
 	<key>NSCalendarsUsageDescription</key>
 	<string>PillCare necesita acceso al calendario para programar recordatorios.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>PillCare usa Bluetooth para enlazar el pastillero y mantener la conexión cercana.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>PillCare usa Bluetooth para encontrar y enlazar tu pastillero.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>PillCare usa ubicación mientras está abierta para poder escanear redes WiFi cercanas.</string>
 	<key>NSUserNotificationUsageDescription</key>
 	<string>PillCare necesita enviarte notificaciones para recordarte tomar tus medicamentos.</string>
 	<key>UILaunchStoryboardName</key>

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/app_theme.dart';
-import '../services/supabase_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../perfil/services/perfil_store.dart';
+import '../../../core/config/supabase_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,6 +18,8 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  final _birthDateCtrl = TextEditingController();
+  DateTime? _birthDate;
   bool _obscurePass = true;
   bool _obscureConfirm = true;
   bool _loading = false;
@@ -42,7 +46,28 @@ class _RegisterScreenState extends State<RegisterScreen>
     _emailCtrl.dispose();
     _passCtrl.dispose();
     _confirmCtrl.dispose();
+    _birthDateCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _birthDate ?? DateTime(now.year - 18, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: now,
+      helpText: 'Selecciona tu fecha de nacimiento',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
+    );
+
+    if (picked == null) return;
+
+    setState(() {
+      _birthDate = picked;
+      _birthDateCtrl.text = DateFormat('dd/MM/yyyy').format(picked);
+    });
   }
 
   Future<void> _register() async {
@@ -53,6 +78,10 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     if (name.isEmpty || email.isEmpty || pass.isEmpty || confirm.isEmpty) {
       _showSnack('Por favor completa todos los campos');
+      return;
+    }
+    if (_birthDate == null) {
+      _showSnack('Selecciona tu fecha de nacimiento');
       return;
     }
     if (pass != confirm) {
@@ -70,8 +99,14 @@ class _RegisterScreenState extends State<RegisterScreen>
       await supabase.auth.signUp(
         email: email,
         password: pass,
-        data: {'nombre': name},
+        data: {
+          'nombre': name,
+          'fecha_nacimiento': DateFormat('yyyy-MM-dd').format(_birthDate!),
+        },
       );
+      if (supabase.auth.currentUser != null) {
+        await PerfilStore.instance.saveInitial(nombre: name);
+      }
       debugPrint(
           '📝 [Register] Usuario registrado con éxito (falta confirmar correo si aplica)');
       if (mounted) {
@@ -100,6 +135,24 @@ class _RegisterScreenState extends State<RegisterScreen>
         }
         debugPrint('📝 [Register] ERROR en registro: $e');
         _showSnack(msg);
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _continueWithGoogle() async {
+    setState(() => _loading = true);
+    try {
+      await supabase.auth.signInWithOAuth(
+        OAuthProvider.google,
+      );
+      if (mounted) {
+        _showSnack('Continuando con Google...', success: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnack('No se pudo iniciar con Google: $e');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -247,6 +300,21 @@ class _RegisterScreenState extends State<RegisterScreen>
                                 () => setState(
                                     () => _obscureConfirm = !_obscureConfirm)),
                           ),
+                          const SizedBox(height: 16),
+                          _fieldLabel('FECHA DE NACIMIENTO'),
+                          const SizedBox(height: 8),
+                          _textField(
+                            controller: _birthDateCtrl,
+                            hint: 'DD/MM/AAAA',
+                            icon: Icons.cake_outlined,
+                            readOnly: true,
+                            onTap: _pickBirthDate,
+                            suffix: const Icon(
+                              Icons.calendar_month_outlined,
+                              color: AppColors.textMuted,
+                              size: 20,
+                            ),
+                          ),
                           const SizedBox(height: 24),
                           SizedBox(
                             width: double.infinity,
@@ -284,6 +352,70 @@ class _RegisterScreenState extends State<RegisterScreen>
                                                 fontWeight: FontWeight.w800)),
                                       ],
                                     ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  height: 1,
+                                  color: AppColors.inputBorder,
+                                ),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 10),
+                                child: Text(
+                                  'O iniciar sesión con Google',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Container(
+                                  height: 1,
+                                  color: AppColors.inputBorder,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: OutlinedButton(
+                              onPressed: _loading ? null : _continueWithGoogle,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.textDark,
+                                side: const BorderSide(
+                                  color: AppColors.inputBorder,
+                                  width: 1.5,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    'assets/Inicio_Sesion/google_logo.png',
+                                    width: 20,
+                                    height: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'Entrar con Google',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -342,11 +474,15 @@ class _RegisterScreenState extends State<RegisterScreen>
     bool obscure = false,
     Widget? suffix,
     TextInputType? keyboardType,
+    bool readOnly = false,
+    VoidCallback? onTap,
   }) =>
       TextField(
         controller: controller,
         obscureText: obscure,
         keyboardType: keyboardType,
+        readOnly: readOnly,
+        onTap: onTap,
         style: const TextStyle(fontSize: 15, color: AppColors.textDark),
         decoration: InputDecoration(
           hintText: hint,

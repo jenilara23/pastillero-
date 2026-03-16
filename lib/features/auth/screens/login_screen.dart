@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 import 'register_screen.dart';
-import '../services/supabase_service.dart';
+import '../../perfil/services/perfil_store.dart';
+import '../../../core/config/supabase_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -56,6 +57,7 @@ class _LoginScreenState extends State<LoginScreen>
         email: email,
         password: pass,
       );
+      await PerfilStore.instance.loadCurrentPerfil();
       debugPrint('🔑 [Login] ¡Sesión iniciada con éxito!');
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/home');

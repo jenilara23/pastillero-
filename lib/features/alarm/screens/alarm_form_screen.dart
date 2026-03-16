@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/alarm.dart';
-import '../models/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../medicamento/models/medicamento.dart';
+import '../../medicamento/repositories/medicamento_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AlarmFormScreen extends StatefulWidget {
   final Alarm? alarm;
@@ -11,6 +14,7 @@ class AlarmFormScreen extends StatefulWidget {
 }
 
 class _AlarmFormScreenState extends State<AlarmFormScreen> {
+  final MedicamentoRepository _medicamentoRepo = MedicamentoRepository();
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
 
@@ -23,17 +27,24 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
   List<bool> _days = [true, true, true, true, true, false, false];
   String _selectedColor = '#4a9ede';
   List<String> _calculatedTimes = [];
+  List<Medicamento> _medicamentos = [];
+  String? _selectedMedicamentoId;
+  int _pastillasPorToma = 1;
+  bool _loadingMedicamentos = true;
 
   bool get _isEditing => widget.alarm != null;
 
   @override
   void initState() {
     super.initState();
+    _loadMedicamentos();
     final now = DateTime.now();
     if (_isEditing) {
       final a = widget.alarm!;
       _titleCtrl.text = a.title;
       _descCtrl.text = a.description;
+      _selectedMedicamentoId = a.medicamentoId;
+      _pastillasPorToma = a.pastillasPorToma;
       final h = a.hour;
       _isAM = h < 12;
       _hour = h % 12 == 0 ? 12 : h % 12;
@@ -50,6 +61,21 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
       _firstDose = TimeOfDay(hour: now.hour, minute: now.minute);
     }
     _calcIntervalTimes();
+  }
+
+  Future<void> _loadMedicamentos() async {
+    try {
+      final meds = await _medicamentoRepo.obtenerMedicamentosConStock();
+      if (!mounted) return;
+      setState(() {
+        _medicamentos = meds;
+        _loadingMedicamentos = false;
+        _selectedMedicamentoId ??= meds.isNotEmpty ? meds.first.id : null;
+      });
+    } on PostgrestException catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingMedicamentos = false);
+    }
   }
 
   @override
@@ -82,6 +108,13 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
   }
 
   void _saveAlarm() {
+    if (_selectedMedicamentoId == null || _selectedMedicamentoId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona un medicamento')),
+      );
+      return;
+    }
+
     if (_titleCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -109,6 +142,8 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
 
     final alarm = Alarm(
       id: _isEditing ? widget.alarm!.id : DateTime.now().millisecondsSinceEpoch,
+      medicamentoId: _selectedMedicamentoId,
+      pastillasPorToma: _pastillasPorToma,
       title: _titleCtrl.text.trim(),
       description: _descCtrl.text.trim(),
       hour: finalHour,
@@ -136,7 +171,12 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
               children: [
                 _formCard(
                   '💊  Medicamento',
-                  _buildTextField(_titleCtrl, 'Ej: Ibuprofeno 400mg',
+                  _buildMedicamentoSelector(),
+                ),
+                const SizedBox(height: 14),
+                _formCard(
+                  '📝  Título de la alarma',
+                  _buildTextField(_titleCtrl, 'Ej: Toma de la mañana',
                       Icons.medication_outlined),
                 ),
                 const SizedBox(height: 14),
@@ -144,6 +184,11 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
                   '📋  Descripción / Dosis',
                   _buildTextField(_descCtrl, 'Ej: 1 comprimido con comida',
                       Icons.notes_rounded),
+                ),
+                const SizedBox(height: 14),
+                _formCard(
+                  '🔢  Pastillas por toma',
+                  _buildPastillasSelector(),
                 ),
                 const SizedBox(height: 14),
                 _buildTimeSection(),
@@ -293,6 +338,81 @@ class _AlarmFormScreenState extends State<AlarmFormScreen> {
               const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         ),
       );
+
+  Widget _buildMedicamentoSelector() {
+    if (_loadingMedicamentos) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 10),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_medicamentos.isEmpty) {
+      return const Text(
+        'No hay medicamentos registrados. Crea uno para vincular esta alarma.',
+        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+      );
+    }
+
+    return DropdownButtonFormField<String>(
+      initialValue: _selectedMedicamentoId,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AppColors.inputFill,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+        ),
+      ),
+      items: _medicamentos
+          .map((m) => DropdownMenuItem<String>(
+                value: m.id,
+                child: Text('${m.nombre} (${m.dosis})'),
+              ))
+          .toList(),
+      onChanged: (value) => setState(() => _selectedMedicamentoId = value),
+    );
+  }
+
+  Widget _buildPastillasSelector() {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: _pastillasPorToma > 1
+              ? () => setState(() => _pastillasPorToma--)
+              : null,
+          icon: const Icon(Icons.remove_circle_outline),
+        ),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.inputFill,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: Text(
+                '$_pastillasPorToma',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: () => setState(() => _pastillasPorToma++),
+          icon: const Icon(Icons.add_circle_outline),
+        ),
+      ],
+    );
+  }
 
   // ──────────────────────────────────── SECCIÓN HORA ──
   Widget _buildTimeSection() {

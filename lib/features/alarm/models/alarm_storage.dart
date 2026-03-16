@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'alarm.dart';
-import '../services/supabase_service.dart';
+import '../../../core/config/supabase_service.dart';
+import '../repositories/alarma_repository.dart';
 
 class AlarmStorage {
   static const _localKey = 'pillcare_alarms';
+  static final AlarmaRepository _alarmaRepo = AlarmaRepository();
 
   // ─── Carga alarmas: Supabase si hay sesión, local si no ──────────────────
   static Future<List<Alarm>> loadAlarms() async {
@@ -31,21 +34,18 @@ class AlarmStorage {
   static Future<List<Alarm>> _loadFromSupabase() async {
     try {
       final userId = currentUserId;
-      if (userId == null) return _defaultAlarms();
+      if (userId == null) return [];
 
-      final data = await supabase
-          .from('alarmas')
-          .select()
-          .eq('user_id', userId)
-          .order('created_at', ascending: true);
-
-      if (data.isEmpty) return _defaultAlarms();
+      final alarms = await _alarmaRepo.obtenerAlarmasUsuario();
       debugPrint(
-          '💾 [AlarmStorage] ${data.length} alarmas recuperadas de Supabase');
-      return data.map<Alarm>((row) => _fromRow(row)).toList();
+          '💾 [AlarmStorage] ${alarms.length} alarmas recuperadas de Supabase');
+      return alarms;
+    } on PostgrestException catch (e) {
+      debugPrint('💾 [AlarmStorage] ERROR Supabase: ${e.message} (${e.code})');
+      return [];
     } catch (e) {
       debugPrint('💾 [AlarmStorage] ERROR cargando de Supabase: $e');
-      return _defaultAlarms();
+      return [];
     }
   }
 
@@ -55,14 +55,17 @@ class AlarmStorage {
     if (userId == null) return;
 
     try {
-      // Eliminar todas las alarmas del usuario y re-insertar
       await supabase.from('alarmas').delete().eq('user_id', userId);
-
-      if (alarms.isEmpty) return;
-
-      final rows = alarms.map((a) => _toRow(a, userId)).toList();
-      await supabase.from('alarmas').insert(rows);
+      for (final alarm in alarms) {
+        if (alarm.medicamentoId == null || alarm.medicamentoId!.isEmpty) {
+          continue;
+        }
+        await _alarmaRepo.insertarAlarma(alarm);
+      }
       debugPrint('💾 [AlarmStorage] Sincronizado con Supabase');
+    } on PostgrestException catch (e) {
+      debugPrint('💾 [AlarmStorage] ERROR Supabase: ${e.message} (${e.code})');
+      await _saveLocal(alarms);
     } catch (e) {
       debugPrint('💾 [AlarmStorage] ERROR sincronizando con Supabase: $e');
       // Fallback a local si Supabase falla
@@ -74,7 +77,7 @@ class AlarmStorage {
   static Future<List<Alarm>> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonStr = prefs.getString(_localKey);
-    if (jsonStr == null || jsonStr.isEmpty) return _defaultAlarms();
+    if (jsonStr == null || jsonStr.isEmpty) return [];
     try {
       final alarms = Alarm.listFromJson(jsonStr);
       debugPrint(
@@ -82,7 +85,7 @@ class AlarmStorage {
       return alarms;
     } catch (e) {
       debugPrint('💾 [AlarmStorage] ERROR parseando JSON local: $e');
-      return _defaultAlarms();
+      return [];
     }
   }
 
@@ -94,57 +97,4 @@ class AlarmStorage {
     await prefs.setString(_localKey, Alarm.listToJson(alarms));
   }
 
-  // ─── Conversión Alarm → fila de DB ───────────────────────────────────────
-  static Map<String, dynamic> _toRow(Alarm a, String userId) => {
-        'id': a.id,
-        'user_id': userId,
-        'title': a.title,
-        'description': a.description,
-        'hour': a.hour,
-        'minute': a.minute,
-        'days': a.days,
-        'enabled': a.enabled,
-        'color': a.color,
-        'interval_hours': a.intervalHours,
-        'calculated_times': a.calculatedTimes,
-      };
-
-  // ─── Conversión fila de DB → Alarm ───────────────────────────────────────
-  static Alarm _fromRow(Map<String, dynamic> row) => Alarm(
-        id: row['id'] as int,
-        title: row['title'] as String,
-        description: row['description'] as String? ?? '',
-        hour: row['hour'] as int,
-        minute: row['minute'] as int,
-        days: List<bool>.from(row['days'] as List),
-        enabled: row['enabled'] as bool? ?? true,
-        color: row['color'] as String? ?? '#4a9ede',
-        intervalHours: row['interval_hours'] as int?,
-        calculatedTimes: List<String>.from(row['calculated_times'] ?? []),
-      );
-
-  // ─── Alarmas de ejemplo (primer inicio) ──────────────────────────────────
-  static List<Alarm> _defaultAlarms() => [
-        Alarm(
-          id: 1,
-          title: 'Ibuprofeno 400 mg',
-          description: '1 comprimido con comida',
-          hour: 18,
-          minute: 0,
-          days: [true, true, true, true, true, false, false],
-          color: '#4a9ede',
-          enabled: true,
-        ),
-        Alarm(
-          id: 2,
-          title: 'Vitamina D',
-          description: '1 cápsula en ayunas',
-          hour: 7,
-          minute: 0,
-          days: [true, true, true, true, true, true, true],
-          color: '#48c774',
-          enabled: true,
-          intervalHours: 24,
-        ),
-      ];
 }
