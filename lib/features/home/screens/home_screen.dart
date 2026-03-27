@@ -223,8 +223,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final isConnected = _connectionType != ConnectionType.none;
     final statusText = _connectionType == ConnectionType.wifi
         ? 'WiFi activo'
-        : _connectionType == ConnectionType.bluetooth
-            ? 'Bluetooth activo'
+        // : _connectionType == ConnectionType.bluetooth
+        //     ? 'Bluetooth activo'
             : 'Sin conexión';
 
     showModalBottomSheet<void>(
@@ -269,9 +269,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 child: Icon(
-                  _connectionType == ConnectionType.bluetooth
-                      ? Icons.bluetooth_connected_rounded
-                      : Icons.wifi_rounded,
+                  // _connectionType == ConnectionType.bluetooth
+                  //     ? Icons.bluetooth_connected_rounded
+                  //     : Icons.wifi_rounded,
+                  Icons.wifi_rounded,
                   color: isConnected ? AppColors.green : Colors.white38,
                   size: 26,
                 ),
@@ -477,7 +478,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _drawerItem(
               icon: Icons.wifi_tethering_rounded,
               title: 'Conectividad',
-              subtitle: 'Bluetooth y WiFi',
+              subtitle: 'Conexión por WiFi',
               onTap: () {
                 Navigator.pop(context);
                 _openConnectivity();
@@ -584,11 +585,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       alignment: Alignment.center,
                       children: [
                         Icon(
-                          _connectionType == ConnectionType.bluetooth
-                              ? Icons.bluetooth_connected_rounded
-                              : _connectionType == ConnectionType.wifi
-                                  ? Icons.wifi_rounded
-                                  : Icons.wifi_rounded,
+                          // _connectionType == ConnectionType.bluetooth
+                          //     ? Icons.bluetooth_connected_rounded
+                          //     : _connectionType == ConnectionType.wifi
+                          //         ? Icons.wifi_rounded
+                          //         : Icons.wifi_rounded,
+                          Icons.wifi_rounded,
                           size: 18,
                           color: _connectionType != ConnectionType.none
                               ? AppColors.green
