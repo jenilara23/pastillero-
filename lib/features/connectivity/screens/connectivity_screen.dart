@@ -28,12 +28,14 @@ class _ConnectivityScreenState extends State<ConnectivityScreen> {
   void initState() {
     super.initState();
     _wifiOn = widget.initialType == ConnectionType.wifi;
-    _bluetoothOn = widget.initialType == ConnectionType.bluetooth || _wifiOn;
+    // ✅ CAMBIO 1: Bluetooth ahora es independiente de WiFi
+    _bluetoothOn = widget.initialType == ConnectionType.bluetooth;
   }
 
   ConnectionType get _currentType {
-    if (_wifiOn) return ConnectionType.wifi;
+    if (_wifiOn && _bluetoothOn) return ConnectionType.wifi;
     if (_bluetoothOn) return ConnectionType.bluetooth;
+    if (_wifiOn) return ConnectionType.wifi;
     return ConnectionType.none;
   }
 
@@ -41,9 +43,7 @@ class _ConnectivityScreenState extends State<ConnectivityScreen> {
     if (!val) {
       setState(() {
         _bluetoothOn = false;
-        _wifiOn = false;
         _linkedEspName = null;
-        _linkedWifiName = null;
       });
       return;
     }
@@ -67,10 +67,7 @@ class _ConnectivityScreenState extends State<ConnectivityScreen> {
       return;
     }
 
-    if (!_bluetoothOn) {
-      _showSnack('Primero conecta Bluetooth para continuar.');
-      return;
-    }
+    // ✅ CAMBIO 2: Se eliminó la validación que obligaba activar Bluetooth primero
 
     final wifiSignal = await _showWifiScannerModal();
     if (!mounted || wifiSignal == null) return;
@@ -115,7 +112,7 @@ class _ConnectivityScreenState extends State<ConnectivityScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Paso 1: Bluetooth',
+                    'Bluetooth',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -294,7 +291,7 @@ class _ConnectivityScreenState extends State<ConnectivityScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Paso 2: WiFi',
+                    'WiFi',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -498,7 +495,7 @@ class _ConnectivityScreenState extends State<ConnectivityScreen> {
                     title: 'WiFi',
                     subtitle: _wifiOn
                         ? 'Conectado: ${_linkedWifiName ?? 'Red seleccionada'}'
-                        : 'Se activa despues del paso Bluetooth',
+                        : 'Toca para conectar tu red WiFi', // ✅ CAMBIO 3
                     value: _wifiOn,
                     onChanged: _toggleWifi,
                   ),
@@ -616,14 +613,15 @@ class _ConnectivityScreenState extends State<ConnectivityScreen> {
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Como conectarte en 2 pasos',
+          Text('Opciones de conexión',
               style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textDark)),
           SizedBox(height: 12),
+          // ✅ CAMBIO 4: Instrucciones actualizadas — conexiones independientes
           Text(
-            '1) Primero activa Bluetooth y elige tu pastillero en la ventana que aparece.',
+            '1) Activa Bluetooth para conectarte directamente con tu pastillero.',
             style: TextStyle(
               color: AppColors.blue,
               fontSize: 13,
@@ -633,7 +631,7 @@ class _ConnectivityScreenState extends State<ConnectivityScreen> {
           ),
           SizedBox(height: 8),
           Text(
-            '2) Despues activa WiFi para mantener el seguimiento y recibir avisos importantes.',
+            '2) Activa WiFi para mantener el seguimiento y recibir avisos importantes.',
             style: TextStyle(
               color: AppColors.blue,
               fontSize: 13,
@@ -643,7 +641,7 @@ class _ConnectivityScreenState extends State<ConnectivityScreen> {
           ),
           SizedBox(height: 12),
           Text(
-            'Puedes usar 2 telefonos en el mismo pastillero: uno para la persona y otro para su familiar o cuidador.',
+            'Puedes activar Bluetooth, WiFi o ambos de forma independiente según tus necesidades.',
             style: TextStyle(
               color: AppColors.textMuted,
               fontSize: 12,
@@ -657,11 +655,13 @@ class _ConnectivityScreenState extends State<ConnectivityScreen> {
 
   Widget _buildConnectButton(BuildContext context) {
     final isConnected = _currentType != ConnectionType.none;
-    final btnText = _wifiOn
+    final btnText = (_bluetoothOn && _wifiOn)
         ? 'Bluetooth y WiFi activos'
         : _bluetoothOn
             ? 'Bluetooth activo'
-            : 'Sin conexion';
+            : _wifiOn
+                ? 'WiFi activo'
+                : 'Sin conexion';
 
     return SizedBox(
       width: double.infinity,
